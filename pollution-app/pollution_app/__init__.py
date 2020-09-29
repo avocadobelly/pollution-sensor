@@ -1,14 +1,12 @@
 __version__ = '0.1.0'
 
+import boto3
+from .aws_creds import s3_bucket
+
 
 def main():
-    x = int(input("Integer: "))
-    y = int(input("Another Integer: "))
-    z = add_two_ints(x, y)
-    print(z)
+    s3 = boto3.client('s3')
+    s3.download_file(s3_bucket, 'locations.json', 'locations.json')
 
 
-def add_two_ints(int1, int2):
-    total = int1 + int2
-    return total
-
+main()
