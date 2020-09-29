@@ -43,4 +43,8 @@ def main():
     subscription_to_queue = sns.subscribe(TopicArn=topic_arn, Protocol='sqs', Endpoint=queue_arn)
     print(subscription_to_queue)
 
+    # receive messages from the queue
+    messages = sqs.receive_message(QueueUrl=queue_url, AttributeNames=['All'])
+    print(messages)
+
 main()
