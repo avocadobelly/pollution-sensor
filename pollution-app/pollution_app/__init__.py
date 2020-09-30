@@ -1,7 +1,15 @@
 __version__ = '0.1.0'
 import json
 import boto3
+import datetime
 
+
+class Sensor:
+    def __init__(self, sensor_id, x_coord, y_coord, sensor_events):
+        self.id = sensor_id
+        self.x = x_coord
+        self.y = y_coord
+        self.events = sensor_events
 
 class SQSQueue:
     def __init__(self, sqs_client, url, policy):
@@ -22,6 +30,7 @@ class SQSQueue:
     def subscribe_event_source_to_queue(sns_client, arn_topic, protocol, arn_queue):
         sns_client.subscribe(TopicArn=arn_topic, Protocol=protocol, Endpoint=arn_queue)
 
+
 def main():
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
@@ -34,6 +43,7 @@ def main():
 
     for location in locations:
         print("{} x={} y={}".format(location['id'], location['x'], location['y']))
+
     print('\n')
 
     aws_queue = sqs.create_queue(QueueName='queue')
@@ -73,4 +83,6 @@ def main():
         message_content = json.loads(body['Message'])
         messages_to_analyse.append(message_content)
         sqs_queue.delete_message_from_queue(sqs_receipt_handle)
+
+    print(messages_to_analyse)
 main()
