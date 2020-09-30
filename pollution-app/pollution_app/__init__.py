@@ -12,12 +12,11 @@ def main():
 
     for location in locations:
         print("{} x={} y={}".format(location['id'], location['x'], location['y']))
-
+    print('\n')
     aws_queue = sqs.create_queue(QueueName='queue')
     queue_url = aws_queue['QueueUrl']
     arn = sqs.get_queue_attributes(QueueUrl=queue_url, AttributeNames=['QueueArn'])
     queue_arn = arn['Attributes']['QueueArn']
-    print(queue_arn)
 
     # grant permission for sns topic to write to the sqs queue
     topic_arn = 'arn:aws:sns:eu-west-1:552908040772:EventProcessing-Altran-snsTopicSensorDataPart1-1HJ83JI0COKVB'
@@ -41,10 +40,16 @@ def main():
 
     # subscribe event source to the queue
     subscription_to_queue = sns.subscribe(TopicArn=topic_arn, Protocol='sqs', Endpoint=queue_arn)
-    print(subscription_to_queue)
 
     # receive messages from the queue
-    messages = sqs.receive_message(QueueUrl=queue_url, AttributeNames=['All'])
-    print(messages)
-
+    messages_and_metadata = sqs.receive_message(QueueUrl=queue_url, WaitTimeSeconds=5)
+    messages = messages_and_metadata['Messages']
+    for message in messages:
+        body = json.loads(message['Body'])
+        sns_message_id = body['MessageId']
+        print(sns_message_id)
+        print('\n')
+        message_content = json.loads(body['Message'])
+        print(message_content)
+        print('\n')
 main()
