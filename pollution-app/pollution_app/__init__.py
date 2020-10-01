@@ -1,15 +1,16 @@
 __version__ = '0.1.0'
 import json
 import boto3
+from pprint import pprint
 import datetime
 
 
 class Sensor:
-    def __init__(self, sensor_id, x_coord, y_coord, sensor_events):
+    def __init__(self, sensor_id, x_coord, y_coord):
         self.id = sensor_id
         self.x = x_coord
         self.y = y_coord
-        self.events = sensor_events
+
 
 class SQSQueue:
     def __init__(self, sqs_client, url, policy):
@@ -35,16 +36,6 @@ def main():
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
     sns = boto3.client('sns')
-
-    locations_file = s3.get_object(Bucket='eventprocessing-altran-locationss3bucket-1ub1fsm0jlky7',
-                      Key='locations.json')['Body'].read().decode('utf-8')
-
-    locations = json.loads(locations_file)
-
-    for location in locations:
-        print("{} x={} y={}".format(location['id'], location['x'], location['y']))
-
-    print('\n')
 
     aws_queue = sqs.create_queue(QueueName='queue')
     queue_url = aws_queue['QueueUrl']
@@ -73,16 +64,31 @@ def main():
     sqs_queue = SQSQueue(sqs_client=sqs, url=queue_url, policy=policy_json)
     sqs_queue.subscribe_to_queue()
     SQSQueue.subscribe_event_source_to_queue(sns, topic_arn, 'sqs', queue_arn)
-    messages_and_metadata = sqs_queue.receive_message()
-    messages = messages_and_metadata['Messages']
 
-    messages_to_analyse = []
-    for message in messages:
-        sqs_receipt_handle = message['ReceiptHandle']
-        body = json.loads(message['Body'])
-        message_content = json.loads(body['Message'])
-        messages_to_analyse.append(message_content)
-        sqs_queue.delete_message_from_queue(sqs_receipt_handle)
+    locations_file = s3.get_object(Bucket='eventprocessing-altran-locationss3bucket-1ub1fsm0jlky7',
+                                   Key='locations.json')['Body'].read().decode('utf-8')
 
-    print(messages_to_analyse)
+    locations = json.loads(locations_file)
+
+    sensor_data = {}
+    for location in locations:
+        location_id = location['id']
+        sensor_data[location_id] = []
+
+    for i in range(0, 10):
+        messages_and_metadata = sqs_queue.receive_message()
+        messages = messages_and_metadata['Messages']
+        for message in messages:
+            messages_to_analyse = []
+            sqs_receipt_handle = message['ReceiptHandle']
+            body = json.loads(message['Body'])
+            message_content = json.loads(body['Message'])
+            location_id = message_content['locationId']
+            if location_id in sensor_data:
+                sensor_data[location_id].append(message_content)
+                messages_to_analyse.append(message_content)
+            sqs_queue.delete_message_from_queue(sqs_receipt_handle)
+    pprint(sensor_data)
+
+
 main()
