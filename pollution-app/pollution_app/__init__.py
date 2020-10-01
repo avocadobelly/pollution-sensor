@@ -72,16 +72,15 @@ def main():
 
     locations = known_sensor_locations(s3_client=s3)
 
-    sensor_data = {}
+    data_from_sensors = {}
     for location in locations:
         location_id = location['id']
-        sensor_data[location_id] = []
+        data_from_sensors[location_id] = []
 
     for i in range(0, 10):
         messages_and_metadata = sqs_queue.receive_message()
         messages = messages_and_metadata['Messages']
         for message in messages:
-
             sqs_receipt_handle = message['ReceiptHandle']
             body = json.loads(message['Body'])
             message_content = json.loads(body['Message'])
@@ -89,9 +88,13 @@ def main():
             timestamp = message_content['timestamp']
             event_id = message_content['eventId']
             value = message_content['value']
-            if location_id in sensor_data:
-                sensor_data[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
+            if location_id in data_from_sensors:
+                data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
             sqs_queue.delete_message_from_queue(sqs_receipt_handle)
-    pprint(sensor_data)
+    pprint(data_from_sensors)
+
+    for event in data_from_sensors['location_id']:
+        event.sort(key=event['timestamp'])
+
 
 main()
