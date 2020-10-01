@@ -32,6 +32,13 @@ class SQSQueue:
         sns_client.subscribe(TopicArn=arn_topic, Protocol=protocol, Endpoint=arn_queue)
 
 
+def known_sensor_locations(s3_client):
+    locations_file = s3_client.get_object(Bucket='eventprocessing-altran-locationss3bucket-1ub1fsm0jlky7',
+                                   Key='locations.json')['Body'].read().decode('utf-8')
+
+    locations = json.loads(locations_file)
+    return locations
+
 def main():
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
@@ -65,10 +72,7 @@ def main():
     sqs_queue.subscribe_to_queue()
     SQSQueue.subscribe_event_source_to_queue(sns, topic_arn, 'sqs', queue_arn)
 
-    locations_file = s3.get_object(Bucket='eventprocessing-altran-locationss3bucket-1ub1fsm0jlky7',
-                                   Key='locations.json')['Body'].read().decode('utf-8')
-
-    locations = json.loads(locations_file)
+    locations = known_sensor_locations(s3)
 
     sensor_data = {}
     for location in locations:
