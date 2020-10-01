@@ -2,8 +2,6 @@ __version__ = '0.1.0'
 import json
 import boto3
 from pprint import pprint
-import datetime
-
 
 class Sensor:
     def __init__(self, sensor_id, x_coord, y_coord):
@@ -35,7 +33,6 @@ class SQSQueue:
 def known_sensor_locations(s3_client):
     locations_file = s3_client.get_object(Bucket='eventprocessing-altran-locationss3bucket-1ub1fsm0jlky7',
                                    Key='locations.json')['Body'].read().decode('utf-8')
-
     locations = json.loads(locations_file)
     return locations
 
@@ -84,16 +81,17 @@ def main():
         messages_and_metadata = sqs_queue.receive_message()
         messages = messages_and_metadata['Messages']
         for message in messages:
-            messages_to_analyse = []
+
             sqs_receipt_handle = message['ReceiptHandle']
             body = json.loads(message['Body'])
             message_content = json.loads(body['Message'])
             location_id = message_content['locationId']
+            timestamp = message_content['timestamp']
+            event_id = message_content['eventId']
+            value = message_content['value']
             if location_id in sensor_data:
-                sensor_data[location_id].append(message_content)
-                messages_to_analyse.append(message_content)
+                sensor_data[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
             sqs_queue.delete_message_from_queue(sqs_receipt_handle)
     pprint(sensor_data)
-
 
 main()
