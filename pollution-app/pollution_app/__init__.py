@@ -39,6 +39,7 @@ def known_sensor_locations(s3_client):
     locations = json.loads(locations_file)
     return locations
 
+
 def main():
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
@@ -70,9 +71,9 @@ def main():
 
     sqs_queue = SQSQueue(sqs_client=sqs, url=queue_url, policy=policy_json)
     sqs_queue.subscribe_to_queue()
-    SQSQueue.subscribe_event_source_to_queue(sns, topic_arn, 'sqs', queue_arn)
+    SQSQueue.subscribe_event_source_to_queue(sns_client=sns, arn_topic=topic_arn, protocol='sqs', arn_queue=queue_arn)
 
-    locations = known_sensor_locations(s3)
+    locations = known_sensor_locations(s3_client=s3)
 
     sensor_data = {}
     for location in locations:
