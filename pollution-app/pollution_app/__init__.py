@@ -42,6 +42,14 @@ def known_sensor_locations(s3_client):
     return locations
 
 
+def minutes_to_seconds(minutes):
+    return minutes*60
+
+
+def seconds_to_minutes(seconds):
+    return seconds/60
+
+
 def main():
     s3 = boto3.client('s3')
     sqs = boto3.client('sqs')
@@ -74,8 +82,6 @@ def main():
     sqs_queue = SQSQueue(sqs_client=sqs, url=queue_url, policy=policy_json)
     sqs_queue.subscribe_to_queue()
     SQSQueue.subscribe_event_source_to_queue(sns_client=sns, arn_topic=topic_arn, protocol='sqs', arn_queue=queue_arn)
-    time_at_startup = time.time()
-    print(time_at_startup)
 
     locations = known_sensor_locations(s3_client=s3)
 
@@ -84,25 +90,32 @@ def main():
         location_id = location['id']
         data_from_sensors[location_id] = []
 
-    for i in range(0, 100):
+    running_time = minutes_to_seconds(1)
+    time_at_startup = time.time()
+    while time.time() < time_at_startup + running_time:
+
         messages_and_metadata = sqs_queue.receive_message()
         messages = messages_and_metadata['Messages']
         for message in messages:
             sqs_receipt_handle = message['ReceiptHandle']
             body = json.loads(message['Body'])
-            message_content = json.loads(body['Message'])
-            location_id = message_content['locationId']
-            timestamp = message_content['timestamp']
-            event_id = message_content['eventId']
-            value = message_content['value']
-            if location_id in data_from_sensors:
-                    data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
-            sqs_queue.delete_message_from_queue(sqs_receipt_handle)
-    #pprint(data_from_sensors)
+            try:
+                message_content = json.loads(body['Message'])
+                location_id = message_content['locationId']
+                timestamp = message_content['timestamp']
+                event_id = message_content['eventId']
+                value = message_content['value']
 
+                if location_id in data_from_sensors:
+                        data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
+            except:
+                print("Malformed message was rejected")
+            sqs_queue.delete_message_from_queue(sqs_receipt_handle)
+    minutes_passed = seconds_to_minutes(time.time() - time_at_startup)
+    print(round(minutes_passed, 2))
     for events in data_from_sensors.values():
         events.sort(key=lambda event: event['timestamp'])
-        print(events)
-
     sqs.delete_queue(QueueUrl=queue_url)
+
+
 main()
