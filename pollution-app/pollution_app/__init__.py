@@ -1,7 +1,9 @@
 __version__ = '0.1.0'
 import json
 import boto3
+import time
 from pprint import pprint
+
 
 class Sensor:
     def __init__(self, sensor_id, x_coord, y_coord):
@@ -69,6 +71,8 @@ def main():
     sqs_queue = SQSQueue(sqs_client=sqs, url=queue_url, policy=policy_json)
     sqs_queue.subscribe_to_queue()
     SQSQueue.subscribe_event_source_to_queue(sns_client=sns, arn_topic=topic_arn, protocol='sqs', arn_queue=queue_arn)
+    time_at_startup = time.time()
+    print(time_at_startup)
 
     locations = known_sensor_locations(s3_client=s3)
 
@@ -76,6 +80,7 @@ def main():
     for location in locations:
         location_id = location['id']
         data_from_sensors[location_id] = []
+        #there is no key called 'location_id' with which to access the array of events, the key is the actual id number
 
     for i in range(0, 10):
         messages_and_metadata = sqs_queue.receive_message()
@@ -89,12 +94,12 @@ def main():
             event_id = message_content['eventId']
             value = message_content['value']
             if location_id in data_from_sensors:
-                data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
+                    data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
             sqs_queue.delete_message_from_queue(sqs_receipt_handle)
-    pprint(data_from_sensors)
+    #pprint(data_from_sensors)
 
-    for event in data_from_sensors['location_id']:
-        event.sort(key=event['timestamp'])
-
+    for events in data_from_sensors.values():
+        events.sort(key=lambda event: event['timestamp'])
+        print(events)
 
 main()
