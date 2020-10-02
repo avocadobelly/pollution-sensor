@@ -92,6 +92,7 @@ def main():
 
     running_time = minutes_to_seconds(1)
     time_at_startup = time.time()
+    event_identifiers = []
     while time.time() < time_at_startup + running_time:
 
         messages_and_metadata = sqs_queue.receive_message()
@@ -105,9 +106,12 @@ def main():
                 timestamp = message_content['timestamp']
                 event_id = message_content['eventId']
                 value = message_content['value']
-
-                if location_id in data_from_sensors:
-                        data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
+                if event_id in event_identifiers:
+                    continue
+                else:
+                    event_identifiers.append(event_id)
+                    if location_id in data_from_sensors:
+                            data_from_sensors[location_id].append({'timestamp': timestamp, 'event_id': event_id, 'reading': value})
             except:
                 print("Malformed message was rejected")
             sqs_queue.delete_message_from_queue(sqs_receipt_handle)
