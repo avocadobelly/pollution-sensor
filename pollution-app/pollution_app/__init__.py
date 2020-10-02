@@ -27,6 +27,9 @@ class SQSQueue:
     def delete_message_from_queue(self, sqs_receipt_handle):
         return self.client.delete_message(QueueUrl=self.url, ReceiptHandle=sqs_receipt_handle)
 
+    def delete_queue(self):
+        self.client.delete_queue(self.url)
+
     @staticmethod
     def subscribe_event_source_to_queue(sns_client, arn_topic, protocol, arn_queue):
         sns_client.subscribe(TopicArn=arn_topic, Protocol=protocol, Endpoint=arn_queue)
@@ -80,9 +83,8 @@ def main():
     for location in locations:
         location_id = location['id']
         data_from_sensors[location_id] = []
-        #there is no key called 'location_id' with which to access the array of events, the key is the actual id number
 
-    for i in range(0, 10):
+    for i in range(0, 100):
         messages_and_metadata = sqs_queue.receive_message()
         messages = messages_and_metadata['Messages']
         for message in messages:
@@ -102,4 +104,5 @@ def main():
         events.sort(key=lambda event: event['timestamp'])
         print(events)
 
+    sqs.delete_queue(QueueUrl=queue_url)
 main()
